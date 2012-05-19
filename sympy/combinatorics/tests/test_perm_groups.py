@@ -1,4 +1,5 @@
-from sympy.combinatorics.perm_groups import PermutationGroup
+from sympy.combinatorics.perm_groups import PermutationGroup, SymmetricGroup,\
+CyclicGroup, DihedralGroup, AlternatingGroup
 from sympy.combinatorics.permutations import Permutation, perm_af_muln, cyclic
 from sympy.utilities.pytest import raises, skip, XFAIL
 from sympy.combinatorics.generators import rubik_cube_generators
@@ -128,12 +129,13 @@ def test_orbits():
     g = PermutationGroup([a, b])
     assert g.orbit(0) == set([0, 1, 2])
     assert g.orbits() == [set([0, 1, 2])]
-    assert g.is_transitive()
+    assert g.is_transitive
     assert g.orbits(rep=True) == [0]
-    assert g.orbit_traversal(0) == \
-        [Permutation([0,1,2]), Permutation([1,2,0]), Permutation([2,0,1])]
-    orbt = g.orbit_traversal(1, af=True)
-    assert g.orbit_traversal(1, af=True) == [[2, 0, 1], [0, 1, 2], [1, 2, 0]]
+    assert g.orbit_transversal(0) == \
+        [Permutation([0, 1, 2]), Permutation([2, 0, 1]), Permutation([1, 2, 0])]
+    assert g.orbit_transversal(0, True) == \
+        [(0, Permutation([0, 1, 2])), (2, Permutation([2, 0, 1])), \
+        (1, Permutation([1, 2, 0]))]
 
     a = Permutation(range(1, 100) + [0])
     G = PermutationGroup([a])
@@ -141,7 +143,7 @@ def test_orbits():
     gens = rubik_cube_generators()
     g = PermutationGroup(gens, 48)
     assert g.orbits(rep=True) == [0, 1]
-    assert not g.is_transitive()
+    assert not g.is_transitive
 
 def test_is_normal():
     gens_s5 = [Permutation(p) for p in [[1,2,3,4,0], [2,1,4,0,3]]]
@@ -228,3 +230,45 @@ def test_rubik():
     assert not G1.is_normal(G)
     G2 = G.normal_closure(G1.generators)
     assert G2 == G
+
+def test_direct_product():
+    C = CyclicGroup(4)
+    G = C*C*C
+    assert G.order() == 64
+    assert G.degree == 12
+
+def test_SymmetricGroup():
+    G = SymmetricGroup(5)
+    elements = list(G.generate())
+    assert len(elements) == 120
+    assert G.is_solvable() == False
+
+def test_CyclicGroup():
+    G = CyclicGroup(10)
+    elements = list(G.generate())
+    assert len(elements) == 10
+    assert (G.commutator()).order() == 1
+
+def test_DihedralGroup():
+    G = DihedralGroup(6)
+    elements = list(G.generate())
+    assert len(elements) == 12
+
+def test_AlternatingGroup():
+    G = AlternatingGroup(5)
+    elements = list(G.generate())
+    assert len(elements) == 60
+    assert [perm.is_even for perm in elements] == [True]*60
+
+def test_orbit_rep():
+    G = DihedralGroup(6)
+    assert G.orbit_rep(1,3) in [Permutation([2, 3, 4, 5, 0, 1]),\
+    Permutation([4, 3, 2, 1, 0, 5])]
+
+def test_schreier_vector():
+    G = CyclicGroup(50)
+    v = [0]*50
+    v[23] = -1
+    assert G.schreier_vector(23) == v
+    H = SymmetricGroup(4)
+    assert H.schreier_vector(1) == [1, -1, 0, 0]

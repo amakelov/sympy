@@ -67,7 +67,8 @@ def perm_af_parity(pi):
 
 def perm_af_mul(a, b):
     """
-    Product of two permutations in array form
+    Product of two permutations in array form. The convention used is
+    ab = first apply b, then apply a.
 
     Examples
     ========
@@ -88,6 +89,20 @@ don\'t match.")
 
 
 def perm_af_muln(*a):
+    """
+    Product of several permutations in array form.
+
+    Examples
+    ========
+
+    >>> from sympy.combinatorics.permutations import perm_af_muln
+    >>> perm_af_muln([1,0,3,2],[2,3,0,1],[3,2,1,0])
+    [0, 1, 2, 3]
+
+    See Also
+    ========
+    Permutation, perm_af_mul
+    """
     if not a:
         raise ValueError("No element")
     m = len(a)
@@ -121,6 +136,21 @@ def perm_af_muln(*a):
         return [p0[i] for i in p1]
 
 def perm_af_invert(a):
+    """
+    Finds the invert of the list a interpreted as the array
+    form of a permutation. The result is again given as a list.
+
+    Examples
+    ========
+
+    >>> from sympy.combinatorics.permutations import perm_af_invert
+    >>> perm_af_invert([1,2,3,0])
+    [3, 0, 1, 2]
+
+    See Also
+    ========
+    Permutation, __invert__
+    """
     n = len(a)
     inv_form = [0] * n
     for i in xrange(n):
@@ -128,6 +158,21 @@ def perm_af_invert(a):
     return inv_form
 
 def perm_af_commutes_with(a, b):
+    """
+    Checks if the two permutations with array forms
+    given by a and b commute.
+
+    Examples
+    ========
+
+    >>> from sympy.combinatorics.permutations import perm_af_commutes_with
+    >>> perm_af_commutes_with([1,2,0],[0,2,1])
+    False
+
+    See Also
+    ========
+    Permutation, commutes_with
+    """
     if len(a) != len(b):
         raise ValueError("The number of elements in the permutations "
                          "don't match.")
@@ -179,6 +224,8 @@ class Permutation(Basic):
         Concrete Mathematics: A Foundation for Computer Science, 2nd ed.
         Reading, MA: Addison-Wesley, 1994.
     (6) http://en.wikipedia.org/wiki/Permutation#Product_and_inverse
+
+    (7) http://en.wikipedia.org/wiki/Lehmer_code
 
     """
 
@@ -270,6 +317,13 @@ class Permutation(Basic):
         return self.cyclic_form
 
     @property
+    def reduced_cyclic_form(self):
+        return [a for a in self.cyclic_form if len(a)>1]
+
+
+
+
+    @property
     def size(self):
         """
         Returns the number of numbers in the permutation
@@ -326,7 +380,7 @@ class Permutation(Basic):
         permutation. The Lehmer code is nothing but the
         inversion vector of a permutation. In this scheme
         the identity permutation is like a zero element.
-        # TODO add a reference
+        See [7].
 
         Examples
         ========
@@ -399,7 +453,7 @@ class Permutation(Basic):
         b = other.array_form
         if len(a) != len(b):
             raise ValueError("The number of elements in the permutations \
-don\'t match.")
+            don\'t match.")
 
         perm = [a[i] for i in b]
         return _new_from_array_form(perm)
@@ -1051,7 +1105,9 @@ don\'t match.")
         ========
         inversions
         """
-        return (-1)**self.inversions()
+        if self.is_even:
+            return 1
+        return -1
 
     def order(self):
         """
@@ -1100,41 +1156,6 @@ don\'t match.")
                 length += 1
         return length
 
-    @property
-    def is_Positive(self):
-        """
-        Checks if the permutation is positive
-
-        Examples
-        ========
-
-        >>> from sympy.combinatorics import Permutation
-        >>> Permutation([0, 1, 2]).is_Positive
-        True
-
-        See Also
-        ========
-        is_Negative
-        """
-        return self.signature() > 0
-
-    @property
-    def is_Negative(self):
-        """
-        Checks if the permutation is negative
-
-        Examples
-        ========
-
-        >>> from sympy.combinatorics import Permutation
-        >>> Permutation([0, 1, 2]).is_Negative
-        False
-
-        See Also
-        ========
-        is_Positive
-        """
-        return self.signature() < 0
 
     @property
     def cycles(self):
@@ -1560,8 +1581,8 @@ don\'t match.")
     def josephus(self, m, n, s = 1):
         """
         Computes the Josephus permutation for a given number of
-        prisoners, frequency of removal and desired number of
-        survivors.
+        prisoners (n), frequency of removal (m) and desired number of
+        survivors (s).
 
         There are people standing in a circle waiting to be executed.
         After the first person is executed, certain number of people
@@ -1569,11 +1590,13 @@ don\'t match.")
         are skipped and a person is executed. The elimination proceeds
         around the circle (which is becoming smaller and smaller as the
         executed people are removed), until only the last person
-        remains, who is given freedom.
+        remains, who is given freedom. The Josephus permutation is given
+        by the order in which the prisoners are executed.
 
         References:
         [1] http://en.wikipedia.org/wiki/Flavius_Josephus
         [2] http://en.wikipedia.org/wiki/Josephus_problem
+        [3] http://www.wou.edu/~burtonl/josephus.html
 
         Examples
         ========
