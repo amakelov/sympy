@@ -272,3 +272,29 @@ def test_schreier_vector():
     assert G.schreier_vector(23) == v
     H = SymmetricGroup(4)
     assert H.schreier_vector(1) == [1, -1, 0, 0]
+
+def test_is_alt_sym():
+    G = DihedralGroup(10)
+    assert G.is_alt_sym() == False
+
+def test_alt_or_sym():
+    S = SymmetricGroup(10)
+    A = AlternatingGroup(10)
+    D = DihedralGroup(10)
+    assert S.alt_or_sym() == 'S' or S.alt_or_sym() == False
+    assert A.alt_or_sym() == 'A' or A.alt_or_sym() == False
+    assert D.alt_or_sym() == False
+
+def test_minimal_block():
+    D = DihedralGroup(6)
+    block_system = D.minimal_block([0,3])
+    for i in range(3):
+        assert block_system[i] == block_system[i+3]
+
+def test_max_div():
+    S = SymmetricGroup(10)
+    assert S.max_div == 5
+
+def test_is_primitive():
+    S = SymmetricGroup(5)
+    assert S.is_primitive()
