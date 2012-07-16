@@ -2157,7 +2157,7 @@ class PermutationGroup(Basic):
         else:
             return self._transitivity_degree
 
-    def schreier_sims_random(self, base=[], gens=None, consec_succ=10,\
+    def schreier_sims_random(self, base=None, gens=None, consec_succ=10,\
                              _random_prec=None):
         r"""
         Randomized Schreier-Sims algorithm.
@@ -2194,6 +2194,8 @@ class PermutationGroup(Basic):
         schreier_sims
 
         """
+        if base is None:
+            base = []
         if gens is None:
             gens = self.generators
         base_len = len(base)
@@ -2208,15 +2210,15 @@ class PermutationGroup(Basic):
                 base_len += 1
         # distribute generators according to basic stabilizers
         distr_gens = _distribute_gens_by_base(base, gens)
-        # initialize the basic stabilizers and the basic orbits
+        # initialize the basic stabilizers, basic transversals and basic orbits
         stabs = {}
+        transversals = {}
         orbs = {}
         for i in xrange(base_len):
-            if distr_gens[i] == []:
-                stabs[i] = PermutationGroup([Permutation(range(n))])
-            else:
-                stabs[i] = PermutationGroup(distr_gens[i])
-            orbs[i] = (stabs[i]).orbit(base[i])
+            stabs[i] = PermutationGroup(distr_gens[i])
+            transversals[i] = dict(stabs[i].orbit_transversal(base[i],\
+                                                              pairs=True))
+            orbs[i] = transversals[i].keys()
         # initialize the number of consecutive elements sifted
         c = 0
         # start sifting random elements while the number of consecutive sifts
@@ -2226,7 +2228,7 @@ class PermutationGroup(Basic):
                 g = self.random_pr()
             else:
                 g = _random_prec['g'].pop()
-            h, j = _strip(g, base, orbs, stabs)
+            h, j = _strip(g, base, orbs, transversals)
             y = True
             # determine whether a new base point is needed
             if j <= base_len:
@@ -2245,7 +2247,9 @@ class PermutationGroup(Basic):
                 for l in range(1, j):
                     distr_gens[l].append(h)
                     stabs[l] = PermutationGroup(distr_gens[l])
-                    orbs[l] = (stabs[l]).orbit(base[l])
+                    transversals[l] = dict(stabs[l].orbit_transversal(base[l],\
+                                                                    pairs=True))
+                    orbs[l] = transversals[l].keys()
                 c = 0
             else:
                 c += 1
@@ -2490,6 +2494,86 @@ class PermutationGroup(Basic):
             if gen not in strong_gens_new:
                 strong_gens_new.append(gen)
         return base_new, strong_gens_new
+
+    def schreier_sims_incremental(self, base=None, gens=None):
+        if base is None:
+            base = []
+        if gens is None:
+            gens = self.generators
+        base_len = len(base)
+        n = self.degree
+        # make sure no generator fixes all base points
+        for gen in gens:
+            if [gen(x) for x in base] == [x for x in base]:
+                new = 0
+                while gen(new) == new:
+                    new += 1
+                base.append(new)
+                base_len += 1
+        # distribute generators according to basic stabilizers
+        distr_gens = _distribute_gens_by_base(base, gens)
+        # initialize the basic stabilizers, basic orbits and basic transversals
+        stabs = {}
+        orbs = {}
+        transversals = {}
+        for i in xrange(base_len):
+            stabs[i] = PermutationGroup(distr_gens[i])
+            transversals[i] = dict(stabs[i].orbit_transversal(base[i],\
+                                                              pairs=True))
+            orbs[i] = transversals[i].keys()
+        i = base_len - 1
+        while i >= 0:
+            continue_i = False
+            for beta in orbs[i]:
+                # print beta, transversals[i]
+                u_beta = transversals[i][beta]
+                for gen in distr_gens[i]:
+                    u_beta_gen = transversals[i][gen(beta)]
+                    if gen*u_beta != u_beta_gen:
+                        y = True
+                        schreier_gen = (~u_beta_gen)*gen*u_beta
+                        h, j = _strip(schreier_gen, base, orbs, transversals)
+                        if j <= base_len:
+                            y = False
+                        elif h != _new_from_array_form(range(n)):
+                            y = False
+                            moved = 0
+                            while h(moved) == moved:
+                                moved += 1
+                            base.append(moved)
+                            base_len += 1
+                            distr_gens.append([])
+                        if y == False:
+                            for l in range(i + 1, j):
+                                distr_gens[l].append(h)
+                                stabs[l] = PermutationGroup(distr_gens[l])
+                                transversals[l] =\
+                                dict(stabs[l].orbit_transversal(base[l],\
+                                                                pairs=True))
+                                orbs[l] = transversals[l].keys()
+                            i = j - 1
+                            continue_i = True
+                    if continue_i == True:
+                        break
+                if continue_i == True:
+                    break
+            if continue_i == True:
+                continue
+            i -= 1
+        strong_gens = []
+        for gens in distr_gens:
+            for gen in gens:
+                if gen not in strong_gens:
+                    strong_gens.append(gen)
+        return base, strong_gens
+
+
+
+
+
+
+
+
 
 def DirectProduct(*groups):
     """

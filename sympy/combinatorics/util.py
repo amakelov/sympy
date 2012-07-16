@@ -34,7 +34,7 @@ def _check_cycles_alt_sym(perm):
                 return True
     return False
 
-def _strip(g, base, orbs, stabs):
+def _strip(g, base, orbs, transversals):
     """
     Attempt to decompose a group element using a subgroup chain ``stabs``.
 
@@ -55,7 +55,7 @@ def _strip(g, base, orbs, stabs):
     >>> S = SymmetricGroup(5)
     >>> S.schreier_sims()
     >>> g = Permutation([0, 2, 3, 1, 4])
-    >>> _strip(g, S.base, S.basic_orbits, S.basic_stabilizers)
+    >>> _strip(g, S.base, S.basic_orbits, S.basic_transversals)
     (Permutation([0, 1, 2, 3, 4]), 5)
 
     Notes
@@ -88,7 +88,7 @@ def _strip(g, base, orbs, stabs):
             continue
         if beta not in orbs[i]:
             return h, i + 1
-        u = (stabs[i]).orbit_rep(base[i], beta)
+        u = transversals[i][beta]
         h = ~u*h
     return h, base_len + 1
 
@@ -103,7 +103,9 @@ def _distribute_gens_by_base(base, gens):
     `i \in\{1, 2, ..., k\}`. The result is a list of length `k`, where `k` is
     the length of ``base``. The `i`-th entry contains those elements in
     ``gens`` which fix the first `i` elements of ``base`` (so that the
-    `0`-th entry is equal to ``gens`` itself).
+    `0`-th entry is equal to ``gens`` itself). If no element fixes the first
+    `i` elements of ``base``, the `i`-th element is set to a list containing
+    the identity element.
 
     Examples
     ========
@@ -129,21 +131,21 @@ def _distribute_gens_by_base(base, gens):
     """
     base_len = len(base)
     stabs = []
+    degree = gens[0].size
     for i in xrange(base_len):
         stabs.append([])
     num_gens = len(gens)
-    # for each generator, find the index of the smallest (fixing the largest
-    # number of points) basic stabilizer it belongs to
-    stab_index = [0]*num_gens
+    max_stab_index = 0
     for i in xrange(num_gens):
         j = 0
-        while j < base_len and gens[i](base[j]) == base[j]:
+        while j < base_len - 1 and gens[i](base[j]) == base[j]:
             j += 1
-        stab_index[i] = j
-    for i in xrange(num_gens):
-        index = stab_index[i]
-        for j in xrange(min(index + 1, base_len)):
-            stabs[j].append(gens[i])
+        if j > max_stab_index:
+            max_stab_index = j
+        for k in xrange(j + 1):
+            stabs[k].append(gens[i])
+    for i in range(max_stab_index + 1, base_len):
+        stabs[i].append(_new_from_array_form(range(degree)))
     return stabs
 
 def _strong_gens_from_distr(distr_gens):
@@ -353,10 +355,7 @@ def _verify_bsgs(group, base, gens):
     degree = group.degree
     current_stabilizer = group
     for i in range(base_len):
-        if distr_gens[i] == []:
-            candidate = PermutationGroup([_new_from_array_form(range(degree))])
-        else:
-            candidate = PermutationGroup(distr_gens[i])
+        candidate = PermutationGroup(distr_gens[i])
         if current_stabilizer.order() != candidate.order():
             return False
         current_stabilizer = current_stabilizer.stabilizer(base[i])
