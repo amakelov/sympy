@@ -2501,7 +2501,7 @@ class PermutationGroup(Basic):
         if gens is None:
             gens = self.generators
         base_len = len(base)
-        n = self.degree
+        degree = self.degree
         # make sure no generator fixes all base points
         for gen in gens:
             if [gen(x) for x in base] == [x for x in base]:
@@ -2535,7 +2535,7 @@ class PermutationGroup(Basic):
                         h, j = _strip(schreier_gen, base, orbs, transversals)
                         if j <= base_len:
                             y = False
-                        elif h != _new_from_array_form(range(n)):
+                        elif h != _new_from_array_form(range(degree)):
                             y = False
                             moved = 0
                             while h(moved) == moved:

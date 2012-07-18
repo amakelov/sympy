@@ -362,3 +362,29 @@ def _verify_bsgs(group, base, gens):
     if current_stabilizer.order() != 1:
         return False
     return True
+
+def _remove_gens(base, strong_gens, basic_orbits=None, distr_gens=None):
+    from sympy.combinatorics.perm_groups import PermutationGroup
+    base_len = len(base)
+    degree = strong_gens[0].size
+    identity = _new_from_array_form(range(degree))
+    if distr_gens is None:
+        distr_gens = _distribute_gens_by_base(base, strong_gens)
+    if basic_orbits is None:
+        basic_orbits = []
+        for i in range(base_len):
+            stab = PermutationGroup(distr_gens[i])
+            basic_orbit = stab.orbit(base[i])
+            basic_orbits.append(basic_orbit)
+    distr_gens.append([])
+    for i in range(base_len - 1, -1, -1):
+        for gen in distr_gens[i]:
+            if gen not in distr_gens[i + 1]:
+                temp_gens = distr_gens[i]
+                temp_gens.remove(gen)
+                if temp_gens == []:
+                    continue
+                temp_group = PermutationGroup(temp_gens)
+                temp_orbit = temp_group.orbit(base[i])
+                if temp_orbit == basic_orbits[i]:
+                    strong_gens.remove(gen)
