@@ -388,3 +388,42 @@ def _remove_gens(base, strong_gens, basic_orbits=None, distr_gens=None):
                 temp_orbit = temp_group.orbit(base[i])
                 if temp_orbit == basic_orbits[i]:
                     strong_gens.remove(gen)
+
+def _orbits_from_bsgs(base, strong_gens, distr_gens=None, get_distr_gens=False, sets=True):
+    from sympy.combinatorics.perm_groups import PermutationGroup
+    if distr_gens is None:
+        distr_gens = _distribute_gens_by_base(base, strong_gens)
+    basic_orbits = []
+    base_len = len(base)
+    for i in range(base_len):
+        stab = PermutationGroup(distr_gens[i])
+        orbit = stab.orbit(base[i])
+        if sets is True:
+            basic_orbits.append(orbit)
+        else:
+            basic_orbits.append(list(orbit))
+    if get_distr_gens is True:
+        return basic_orbits, distr_gens
+    else:
+        return basic_orbits
+
+def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None, basic_orbits=None, transversals=None):
+    from sympy.combinatorics.perm_groups import PermutationGroup
+    base_len = len(base)
+    degree = group.degree
+    identity = _new_from_array_form(range(degree))
+    transversals, basic_orbits, distr_gens = _handle_precomputed_bsgs(base, strong_gens, transversals=transversals, basic_orbits=basic_orbits, distr_gens=distr_gens)
+
+    partial_base = base[: pos + 1]
+    partial_base.append(point)
+    if pos == base_len - 1:
+        partial_distr_gens = distr_gens[: pos + 1]
+        partial_distr_gens.append([identity])
+    else:
+        partial_distr_gens = distr_gens[: pos + 2]
+    partial_basic_orbits = basic_orbits[: pos + 1]
+
+    last_stab = PermutationGroup(partial_distr_gens[pos + 1])
+    last_orbit = last_stab.orbit(point)
+    partial_basic_orbits.append(last_orbit)
+    new_base, new_strong_gens = group.baseswap(partial_base, strong_gens, pos, transversals=transversals, basic_orbits=partial_basic_orbits, distr_gens=partial_distr_gens)

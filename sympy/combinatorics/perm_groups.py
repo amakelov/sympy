@@ -8,7 +8,8 @@ from math import log
 from sympy.ntheory import isprime, sieve
 from sympy.combinatorics.util import _check_cycles_alt_sym,\
 _distribute_gens_by_base, _orbits_transversals_from_bsgs,\
-_handle_precomputed_bsgs, _base_ordering, _strong_gens_from_distr, _strip
+_handle_precomputed_bsgs, _base_ordering, _strong_gens_from_distr, _strip,\
+_orbits_from_bsgs
 
 def _smallest_change(h, alpha):
     """
@@ -2502,6 +2503,11 @@ class PermutationGroup(Basic):
             gens = self.generators
         base_len = len(base)
         degree = self.degree
+        # handle the trivial group
+        if gens == [_new_from_array_form(range(degree))]:
+            self._base = base
+            self._strong_gens = gens
+            return
         # make sure no generator fixes all base points
         for gen in gens:
             if [gen(x) for x in base] == [x for x in base]:
@@ -2565,7 +2571,109 @@ class PermutationGroup(Basic):
             for gen in gens:
                 if gen not in strong_gens:
                     strong_gens.append(gen)
-        return base, strong_gens
+        self._base = base
+        self._strong_gens = strong_gens
+
+
+    def subgroup_search(self, prop, tests=None, init_subgroup=None):
+
+        # initialize BSGS and basic group properties
+        if self._base == []:
+            self.schreier_sims_incremental()
+        base = self._base
+        base_len = len(base)
+        strong_gens = self._strong_gens
+        degree = self.degree
+        identity = _new_from_array_form(range(degree))
+        base_ordering = _base_ordering(base, degree)
+        # add an element larger than all points
+        base_ordering.append(degree)
+        # add an element smaller than all points
+        base_ordering.append(-1)
+        basic_orbits = _orbits_from_bsgs(base, strong_gens, sets=False)
+
+        # handle input
+        if init_subgroup is None:
+            init_subgroup = PermutationGroup([identity])
+        if tests is None:
+            trivial_test = lambda x: True
+            tests = []
+            for i in xrange(base_len):
+                tests.append(trivial_test)
+
+        # line 1: initializations. careful with the indices.
+        res = init_subgroup
+        f = base_len - 1
+        l = base_len - 1
+
+        # line 2: copy the base of G into a new list
+        res_base = base[:]
+
+        # line 3: compute BSGS and related structures for K
+        res.schreier_sims_incremental(base=res_base)
+        res_strong_gens = res.strong_gens
+        res_basic_orbits, res_distr_gens = _orbits_from_bsgs(res_base, res_strong_gens, get_distr_gens=True, sets=False)
+
+        # initialize orbit representatives
+        orbit_reps = [0]*base_len
+
+        # line 4: orbit representatives for f-th basic stabilizer of K
+        stab_f = PermutationGroup(res_distr_gens[f])
+        orbits = stab_f.orbits()
+        reps = []
+        for orbit in orbits:
+            rep = min(orbit, key = lambda point: base_ordering[point])
+            reps.append(rep)
+        orbit_reps[f] = reps
+
+        # line 5
+        orbit_reps[f].remove(base[f])
+
+        # line 6: initializations
+        c = [1]*base_len
+        u = [identity]*base_len
+        sorted_orbits = [None]*base_len
+        for i in xrange(base_len):
+            sorted_orbits[i] = basic_orbits[i][:]
+            sorted_orbits[i].sort(key = lambda point: base_ordering[point])
+
+        # line 7: initializations
+        mu = [None]*base_len
+        nu = [None]*base_len
+        # this corresponds to the element smaller than all points
+        mu[l] = degree + 1
+        temp_index = len(basic_orbits[l])+1-len(res_basic_orbits[l])
+        if temp_index >= len(basic_orbits[l]):
+            # this corresponds to the element larger than all points
+            nu[l] = base_ordering[degree]
+        else:
+            nu[l] = sorted_orbits[l][temp_index]
+
+        # initialize computed words
+        computed_words = [identity]*base_len
+
+        # line 8
+        while True:
+            while l < base_len - 1 and\
+                  computed_words[l](base[l]) in orbit_reps[l] and\
+                  base_ordering(computed_words[l](base[l])) > base_ordering(mu[l]) and\
+                  base_ordering(computed_words[l](base[l])) < base_ordering(nu[l]) and\
+                  tests[l](computed_words[base_len - 1]):
+                new_point = computed_words[l](base[l])
+                partial_base = res_base[:l + 1]
+                partial_base.append(new_point)
+                partial_distr_gens = res_distr_gens[:l + 1]
+                res.baseswap(partial_base, partial_stab
+
+
+
+
+
+
+
+
+
+
 
 
 
