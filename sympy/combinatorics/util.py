@@ -324,7 +324,7 @@ def _base_ordering(base, degree):
             current += 1
     return ordering
 
-def _verify_bsgs(group, base, gens):
+def _verify_bsgs(group, base, gens, depth=None):
     """
     Verify the correctness of a base and strong generating set.
 
@@ -353,13 +353,15 @@ def _verify_bsgs(group, base, gens):
     distr_gens = _distribute_gens_by_base(base, gens)
     base_len = len(base)
     degree = group.degree
+    if depth is None:
+        depth = base_len
     current_stabilizer = group
-    for i in range(base_len):
+    for i in range(depth):
         candidate = PermutationGroup(distr_gens[i])
         if current_stabilizer.order() != candidate.order():
             return False
         current_stabilizer = current_stabilizer.stabilizer(base[i])
-    if current_stabilizer.order() != 1:
+    if depth == base_len and current_stabilizer.order() != 1:
         return False
     return True
 
@@ -370,6 +372,7 @@ def _remove_gens(base, strong_gens, basic_orbits=None, distr_gens=None):
     identity = _new_from_array_form(range(degree))
     if distr_gens is None:
         distr_gens = _distribute_gens_by_base(base, strong_gens)
+    temp = distr_gens[:]
     if basic_orbits is None:
         basic_orbits = []
         for i in range(base_len):
@@ -377,19 +380,23 @@ def _remove_gens(base, strong_gens, basic_orbits=None, distr_gens=None):
             basic_orbit = stab.orbit(base[i])
             basic_orbits.append(basic_orbit)
     distr_gens.append([])
+    res = strong_gens[:]
     for i in range(base_len - 1, -1, -1):
+        gens_copy = distr_gens[i][:]
         for gen in distr_gens[i]:
             if gen not in distr_gens[i + 1]:
-                temp_gens = distr_gens[i]
+                temp_gens = gens_copy[:]
                 temp_gens.remove(gen)
                 if temp_gens == []:
                     continue
                 temp_group = PermutationGroup(temp_gens)
                 temp_orbit = temp_group.orbit(base[i])
                 if temp_orbit == basic_orbits[i]:
-                    strong_gens.remove(gen)
+                    gens_copy.remove(gen)
+                    res.remove(gen)
+    return res
 
-def _orbits_from_bsgs(base, strong_gens, distr_gens=None, get_distr_gens=False, sets=True):
+def _orbits_from_bsgs(base, strong_gens, distr_gens=None, sets=True):
     from sympy.combinatorics.perm_groups import PermutationGroup
     if distr_gens is None:
         distr_gens = _distribute_gens_by_base(base, strong_gens)
@@ -402,28 +409,61 @@ def _orbits_from_bsgs(base, strong_gens, distr_gens=None, get_distr_gens=False, 
             basic_orbits.append(orbit)
         else:
             basic_orbits.append(list(orbit))
-    if get_distr_gens is True:
-        return basic_orbits, distr_gens
-    else:
-        return basic_orbits
+    return basic_orbits
 
 def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None, basic_orbits=None, transversals=None):
     from sympy.combinatorics.perm_groups import PermutationGroup
+
+    # initialize basic group properties and BSGS structures
     base_len = len(base)
     degree = group.degree
     identity = _new_from_array_form(range(degree))
     transversals, basic_orbits, distr_gens = _handle_precomputed_bsgs(base, strong_gens, transversals=transversals, basic_orbits=basic_orbits, distr_gens=distr_gens)
 
+    # cut the base at position pos and append the new point
     partial_base = base[: pos + 1]
     partial_base.append(point)
+
+    # cut the generators for the stabilizer chain and amend them accordingly
     if pos == base_len - 1:
         partial_distr_gens = distr_gens[: pos + 1]
         partial_distr_gens.append([identity])
     else:
         partial_distr_gens = distr_gens[: pos + 2]
-    partial_basic_orbits = basic_orbits[: pos + 1]
 
+    # cut the basic orbits and transversals and amend them accordingly
+    partial_basic_orbits = basic_orbits[: pos + 1]
+    partial_transversals = transversals[: pos + 1]
     last_stab = PermutationGroup(partial_distr_gens[pos + 1])
-    last_orbit = last_stab.orbit(point)
+    last_transversal = dict(last_stab.orbit_transversal(point, pairs=True))
+    last_orbit = last_transversal.keys()
     partial_basic_orbits.append(last_orbit)
-    new_base, new_strong_gens = group.baseswap(partial_base, strong_gens, pos, transversals=transversals, basic_orbits=partial_basic_orbits, distr_gens=partial_distr_gens)
+    partial_transversals.append(last_transversal)
+
+    # baseswap with the partial BSGS structures. Notice that we need only
+    # the orbit and transversal of the new point under the last stabilizer
+    new_base, new_strong_gens = group.baseswap(partial_base, strong_gens, pos, transversals=partial_transversals, basic_orbits=partial_basic_orbits, distr_gens=partial_distr_gens)
+    # amend the basic orbits and transversals
+    stab_pos = PermutationGroup(distr_gens[pos])
+    new_transversal = dict(stab_pos.orbit_transversal(point, pairs=True))
+    transversals[pos] = new_transversal
+    basic_orbits[pos] = new_transversal.keys()
+
+    # amend the distributed generators if necessary
+    if pos != base_len - 1:
+        new_stab_gens = []
+        for gen in new_strong_gens:
+            if [gen(point) for point in new_base[: pos + 1]] == [point for point in new_base[: pos + 1]]:
+                new_stab_gens.append(gen)
+        distr_gens[pos + 1] = new_stab_gens
+    # return the new partial base and partial strong generating set
+    new_base.pop()
+    new_base = new_base + base[pos + 1 :]
+    while len(base) != 0:
+        base.pop()
+    for point in new_base:
+        base.append(point)
+    while len(strong_gens) != 0:
+        strong_gens.pop()
+    for gen in new_strong_gens:
+        strong_gens.append(gen)

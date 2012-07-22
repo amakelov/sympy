@@ -5,7 +5,7 @@ from sympy.combinatorics.permutations import Permutation
 from sympy.combinatorics.util import _check_cycles_alt_sym, _strip,\
 _distribute_gens_by_base, _strong_gens_from_distr,\
 _orbits_transversals_from_bsgs, _handle_precomputed_bsgs, _base_ordering,\
-_verify_bsgs
+_verify_bsgs, _remove_gens, _insert_point_in_base
 
 def test_check_cycles_alt_sym():
     perm1 = Permutation([[0, 1, 2, 3, 4, 5, 6], [7], [8], [9]])
@@ -106,3 +106,42 @@ def test_verify_bsgs():
     assert _verify_bsgs(S, base, strong_gens) == True
     assert _verify_bsgs(S, base[:-1], strong_gens) == False
     assert _verify_bsgs(S, base, S.generators) == False
+
+def test_remove_gens():
+    S = SymmetricGroup(10)
+    base, strong_gens = S.schreier_sims_incremental()
+    new_gens = _remove_gens(base, strong_gens)
+    assert _verify_bsgs(S, base, new_gens) == True
+    A = AlternatingGroup(7)
+    base, strong_gens = A.schreier_sims_incremental()
+    new_gens = _remove_gens(base, strong_gens)
+    assert _verify_bsgs(A, base, new_gens) == True
+    D = DihedralGroup(2)
+    base, strong_gens = D.schreier_sims_incremental()
+    new_gens = _remove_gens(base, strong_gens)
+    assert _verify_bsgs(D, base, new_gens) == True
+
+def test_insert_point_in_base():
+    S = SymmetricGroup(5)
+    base, strong_gens = S.schreier_sims_incremental()
+    _insert_point_in_base(S, base, strong_gens, 2, 4)
+    assert _verify_bsgs(S, base, strong_gens, depth=3) == True
+    D = DihedralGroup(3)
+    base, strong_gens = D.schreier_sims_incremental()
+    _insert_point_in_base(D, base, strong_gens, 0, 2)
+    assert _verify_bsgs(D, base, strong_gens, depth=1) == True
+    A = AlternatingGroup(7)
+    base, strong_gens = A.schreier_sims_incremental()
+    transversals, basic_orbits, distr_gens = _handle_precomputed_bsgs(base, strong_gens)
+    _insert_point_in_base(A, base, strong_gens, 0, 6, transversals=transversals, basic_orbits=basic_orbits, distr_gens=distr_gens)
+    assert _verify_bsgs(A, base, strong_gens, depth=1) == True
+
+def test_subgroup_search():
+    prop_true = lambda x: True
+    prop_fix_points = lambda x: [x(point) for point in points] == points
+    prop_commutes_with_g = lambda x: x*g == g*x
+    prop_even = lambda x: x.is_even
+    for i in range(5, 10):
+        S = SymmetricGroup(i)
+        result = S.subgroup_search(prop_true)
+        assert result.order() == S.order()
