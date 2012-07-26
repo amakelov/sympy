@@ -135,13 +135,3 @@ def test_insert_point_in_base():
     transversals, basic_orbits, distr_gens = _handle_precomputed_bsgs(base, strong_gens)
     _insert_point_in_base(A, base, strong_gens, 0, 6, transversals=transversals, basic_orbits=basic_orbits, distr_gens=distr_gens)
     assert _verify_bsgs(A, base, strong_gens, depth=1) == True
-
-def test_subgroup_search():
-    prop_true = lambda x: True
-    prop_fix_points = lambda x: [x(point) for point in points] == points
-    prop_commutes_with_g = lambda x: x*g == g*x
-    prop_even = lambda x: x.is_even
-    for i in range(5, 10):
-        S = SymmetricGroup(i)
-        result = S.subgroup_search(prop_true)
-        assert result.order() == S.order()

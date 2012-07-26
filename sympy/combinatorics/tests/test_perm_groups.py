@@ -413,3 +413,16 @@ def test_schreier_sims_incremental():
     gen = C.generators[0]
     base, strong_gens = C.schreier_sims_incremental(gens=[gen**3])
     assert _verify_bsgs(C, base, strong_gens) == True
+
+def test_subgroup_search():
+    prop_true = lambda x: True
+    prop_fix_points = lambda x: [x(point) for point in points] == points
+    prop_commutes_with_g = lambda x: x*g == g*x
+    prop_even = lambda x: x.is_even
+    for i in range(5, 15, 2):
+        S = SymmetricGroup(i)
+        A = AlternatingGroup(i)
+        Sym = S.subgroup_search(prop_true)
+        assert Sym.order() == S.order()
+        Alt = S.subgroup_search(prop_even)
+        assert Alt == A

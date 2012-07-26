@@ -396,21 +396,6 @@ def _remove_gens(base, strong_gens, basic_orbits=None, distr_gens=None):
                     res.remove(gen)
     return res
 
-def _orbits_from_bsgs(base, strong_gens, distr_gens=None, sets=True):
-    from sympy.combinatorics.perm_groups import PermutationGroup
-    if distr_gens is None:
-        distr_gens = _distribute_gens_by_base(base, strong_gens)
-    basic_orbits = []
-    base_len = len(base)
-    for i in range(base_len):
-        stab = PermutationGroup(distr_gens[i])
-        orbit = stab.orbit(base[i])
-        if sets is True:
-            basic_orbits.append(orbit)
-        else:
-            basic_orbits.append(list(orbit))
-    return basic_orbits
-
 def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None, basic_orbits=None, transversals=None):
     from sympy.combinatorics.perm_groups import PermutationGroup
 
@@ -439,7 +424,6 @@ def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None,
     last_orbit = last_transversal.keys()
     partial_basic_orbits.append(last_orbit)
     partial_transversals.append(last_transversal)
-
     # baseswap with the partial BSGS structures. Notice that we need only
     # the orbit and transversal of the new point under the last stabilizer
     new_base, new_strong_gens = group.baseswap(partial_base, strong_gens, pos, transversals=partial_transversals, basic_orbits=partial_basic_orbits, distr_gens=partial_distr_gens)
@@ -448,7 +432,6 @@ def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None,
     new_transversal = dict(stab_pos.orbit_transversal(point, pairs=True))
     transversals[pos] = new_transversal
     basic_orbits[pos] = new_transversal.keys()
-
     # amend the distributed generators if necessary
     if pos != base_len - 1:
         new_stab_gens = []

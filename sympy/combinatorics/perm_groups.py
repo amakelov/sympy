@@ -9,7 +9,7 @@ from sympy.ntheory import isprime, sieve
 from sympy.combinatorics.util import _check_cycles_alt_sym,\
 _distribute_gens_by_base, _orbits_transversals_from_bsgs,\
 _handle_precomputed_bsgs, _base_ordering, _strong_gens_from_distr, _strip,\
-_orbits_from_bsgs, _insert_point_in_base
+_insert_point_in_base
 
 def _smallest_change(h, alpha):
     """
@@ -834,7 +834,6 @@ class PermutationGroup(Basic):
             transversals[index].keys()
         self._transversals = transversals
         self._basic_orbits = basic_orbits
-
 
     def coset_decomposition(self, g):
         """
@@ -2570,9 +2569,7 @@ class PermutationGroup(Basic):
                     strong_gens.append(gen)
         return base, strong_gens
 
-
     def subgroup_search(self, prop, base=None, strong_gens=None, tests=None, init_subgroup=None):
-
         # initialize BSGS and basic group properties
         if base is None:
             base, strong_gens = self.schreier_sims_incremental()
@@ -2584,10 +2581,10 @@ class PermutationGroup(Basic):
         base_ordering.append(degree)
         # add an element smaller than all points
         base_ordering.append(-1)
+        # compute BSGS-related structures
         distr_gens = _distribute_gens_by_base(base, strong_gens)
         basic_orbits, transversals = _orbits_transversals_from_bsgs(base, distr_gens)
-
-        # handle input
+        # handle subgroup initialization and tests
         if init_subgroup is None:
             init_subgroup = PermutationGroup([identity])
         if tests is None:
@@ -2595,45 +2592,39 @@ class PermutationGroup(Basic):
             tests = []
             for i in xrange(base_len):
                 tests.append(trivial_test)
-
-        # line 1: initializations. careful with the indices.
+        # line 1: more initializations.
         res = init_subgroup
         f = base_len - 1
         l = base_len - 1
-
-        # line 2: copy the base of G into a new list
+        # line 2: set the base for K to the base for G
         res_base = base[:]
-
         # line 3: compute BSGS and related structures for K
         res_base, res_strong_gens = res.schreier_sims_incremental(base=res_base)
         res_distr_gens = _distribute_gens_by_base(res_base, res_strong_gens)
         res_basic_orbits, res_transversals = _orbits_transversals_from_bsgs(res_base, res_distr_gens)
         res_basic_orbits_init_base = res_basic_orbits[:]
         res_strong_gens_init = res_strong_gens[:]
-
         # initialize orbit representatives
-        orbit_reps = [0]*base_len
-
+        orbit_reps = [None]*base_len
         # line 4: orbit representatives for f-th basic stabilizer of K
         stab_f = PermutationGroup(res_distr_gens[f])
         orbits = stab_f.orbits()
         reps = []
         for orbit in orbits:
+            # get the minimal element in the base ordering
             rep = min(orbit, key = lambda point: base_ordering[point])
             reps.append(rep)
         orbit_reps[f] = reps
-
-        # line 5
+        # line 5: remove the base point from the representatives to avoid
+        # getting the identity element as a generator for K
         orbit_reps[f].remove(base[f])
-
-        # line 6: initializations
-        c = [1]*base_len
+        # line 6: more initializations
+        c = [0]*base_len
         u = [identity]*base_len
         sorted_orbits = [None]*base_len
         for i in range(base_len):
             sorted_orbits[i] = basic_orbits[i][:]
             sorted_orbits[i].sort(key = lambda point: base_ordering[point])
-
         # line 7: initializations
         mu = [None]*base_len
         nu = [None]*base_len
@@ -2645,10 +2636,8 @@ class PermutationGroup(Basic):
             nu[l] = base_ordering[degree]
         else:
             nu[l] = sorted_orbits[l][temp_index]
-
         # initialize computed words
         computed_words = [identity]*base_len
-
         # line 8: main loop
         while True:
             # apply all the tests
@@ -2657,26 +2646,12 @@ class PermutationGroup(Basic):
                   base_ordering[computed_words[l](base[l])] > base_ordering[mu[l]] and\
                   base_ordering[computed_words[l](base[l])] < base_ordering[nu[l]] and\
                   tests[l](computed_words[base_len - 1]):
-                """
-                base_ordering[computed_words[l](base[l])] > base_ordering[mu[l]] and\
-                base_ordering[computed_words[l](base[l])] < base_ordering[nu[l]] and\
-                """
                 # line 11: change the (partial) base of K
                 new_point = computed_words[l](base[l])
-                """
-                print res
-                print res_base
-                print res_strong_gens
-                print l
-                print new_point
-                print res_distr_gens
-                print res_basic_orbits
-                print res_transversals
-                """
+                # this function maintains a partial BSGS structure up to position l
                 _insert_point_in_base(res, res_base, res_strong_gens, l, new_point, distr_gens=res_distr_gens, basic_orbits=res_basic_orbits, transversals=res_transversals)
                 # find the l+1-th basic stabilizer
                 new_stab = PermutationGroup(res_distr_gens[l + 1])
-
                 # line 12: calculate minimal orbit representatives for the l+1-th basic stabilizer
                 orbits = new_stab.orbits()
                 reps = []
@@ -2684,14 +2659,12 @@ class PermutationGroup(Basic):
                     rep = min(orbit, key = lambda point: base_ordering[point])
                     reps.append(rep)
                 orbit_reps[l + 1] = reps
-
                 # line 13: amend sorted orbits
                 l += 1
                 temp_orbit = [computed_words[l-1](point) for point in basic_orbits[l]]
                 temp_orbit.sort(key = lambda point: base_ordering[point])
                 sorted_orbits[l] = temp_orbit
-
-                # line 14:
+                # lines 14 and 15: update variables used minimality tests
                 new_mu = degree + 1
                 for i in range(l):
                     if base[l] in res_basic_orbits_init_base[i]:
@@ -2699,51 +2672,40 @@ class PermutationGroup(Basic):
                         if base_ordering[candidate] > base_ordering[new_mu]:
                             new_mu = candidate
                 mu[l] = new_mu
-
-                # line 15
                 temp_index = len(basic_orbits[l]) + 1 - len(res_basic_orbits_init_base[l])
                 if temp_index >= len(sorted_orbits[l]):
                     nu[l] = base_ordering[degree]
                 else:
                     nu[l] = sorted_orbits[l][temp_index]
-
-                # line 16:
+                # line 16: determine the new transversal element
                 c[l] = 0
                 temp_point = sorted_orbits[l][c[l]]
                 temp_element = ~(computed_words[l - 1])
                 gamma = temp_element(temp_point)
                 u[l] = transversals[l][gamma]
-
                 # update computed words
                 computed_words[l] = computed_words[l-1] * u[l]
-
-            # line 17 & 18
+            # lines 17 & 18: apply the tests to the group element found
             g = computed_words[l]
-            temp_point =g(base[l])
+            temp_point = g(base[l])
             if l == base_len - 1 and\
                base_ordering[temp_point] > base_ordering[mu[l]] and\
                base_ordering[temp_point] < base_ordering[nu[l]] and\
                temp_point in orbit_reps[l] and\
                tests[l](g) and\
                prop(g):
-                """
-                base_ordering[temp_point] > base_ordering[mu[l]] and\
-                base_ordering[temp_point] < base_ordering[nu[l]] and\
-                """
-                # line 19
+                # line 19: reset the base of K
                 gens = res.generators[:]
                 gens.append(g)
                 res = PermutationGroup(gens)
                 res_base = base[:]
-
-                # line 20, and recalculate transversals
+                # line 20: recalculate basic orbits (and transversals)
                 res_strong_gens_init.append(g)
                 res_distr_gens = _distribute_gens_by_base(res_base, res_strong_gens_init)
                 res_basic_orbits, res_transversals = _orbits_transversals_from_bsgs(res_base, res_distr_gens)
                 res_basic_orbits_init_base = res_basic_orbits[:]
                 res_strong_gens = res_strong_gens_init[:]
-
-                # line 21
+                # line 21: recalculate orbit representatives
                 stab_f = PermutationGroup(res_distr_gens[f])
                 temp_orbits = stab_f.orbits()
                 reps = []
@@ -2751,25 +2713,19 @@ class PermutationGroup(Basic):
                     rep = min(orbit, key = lambda point: base_ordering[point])
                     reps.append(rep)
                 orbit_reps[f] = reps
-
-                # line 22
+                # line 22: reset the search depth
                 l = f
-
-            # line 23
+            # line 23: go up the tree until in the first branch not fully searched
             while l >= 0 and c[l] == len(basic_orbits[l]) - 1:
                 l = l - 1
-
-            # line 24
+            # line 24: if the entire tree is traversed, return K
             if l == -1:
                 return res
-
-            # line 25
+            # lines 25
             if l < f:
-
                 # line 26
                 f = l
                 c[l] = 0
-
                 # line 27
                 stab_f = PermutationGroup(res_distr_gens[f])
                 temp_orbits = stab_f.orbits()
@@ -2778,7 +2734,6 @@ class PermutationGroup(Basic):
                     rep = min(orbit, key = lambda point: base_ordering[point])
                     reps.append(rep)
                 orbit_reps[f] = reps
-
                 # line 28
                 mu[l] = degree + 1
                 temp_index = len(basic_orbits[l]) + 1 - len(res_basic_orbits_init_base[l])
@@ -2795,28 +2750,6 @@ class PermutationGroup(Basic):
                 computed_words[l] = u[l]
             else:
                 computed_words[l] = computed_words[l - 1]*u[l]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 def DirectProduct(*groups):
     """
