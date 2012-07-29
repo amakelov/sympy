@@ -398,24 +398,20 @@ def _remove_gens(base, strong_gens, basic_orbits=None, distr_gens=None):
 
 def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None, basic_orbits=None, transversals=None):
     from sympy.combinatorics.perm_groups import PermutationGroup
-
     # initialize basic group properties and BSGS structures
     base_len = len(base)
     degree = group.degree
     identity = _new_from_array_form(range(degree))
     transversals, basic_orbits, distr_gens = _handle_precomputed_bsgs(base, strong_gens, transversals=transversals, basic_orbits=basic_orbits, distr_gens=distr_gens)
-
     # cut the base at position pos and append the new point
     partial_base = base[: pos + 1]
     partial_base.append(point)
-
     # cut the generators for the stabilizer chain and amend them accordingly
     if pos == base_len - 1:
         partial_distr_gens = distr_gens[: pos + 1]
         partial_distr_gens.append([identity])
     else:
         partial_distr_gens = distr_gens[: pos + 2]
-
     # cut the basic orbits and transversals and amend them accordingly
     partial_basic_orbits = basic_orbits[: pos + 1]
     partial_transversals = transversals[: pos + 1]
@@ -426,7 +422,7 @@ def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None,
     partial_transversals.append(last_transversal)
     # baseswap with the partial BSGS structures. Notice that we need only
     # the orbit and transversal of the new point under the last stabilizer
-    new_base, new_strong_gens = group.baseswap(partial_base, strong_gens, pos, transversals=partial_transversals, basic_orbits=partial_basic_orbits, distr_gens=partial_distr_gens)
+    new_base, new_strong_gens = group.baseswap(partial_base, strong_gens, pos, randomized=False, transversals=partial_transversals, basic_orbits=partial_basic_orbits, distr_gens=partial_distr_gens)
     # amend the basic orbits and transversals
     stab_pos = PermutationGroup(distr_gens[pos])
     new_transversal = dict(stab_pos.orbit_transversal(point, pairs=True))

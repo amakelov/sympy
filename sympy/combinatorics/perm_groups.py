@@ -2380,7 +2380,7 @@ class PermutationGroup(Basic):
             else:
                 computed_words[depth] = computed_words[depth - 1]*u[depth]
 
-    def baseswap(self, base, strong_gens, pos, randomized=False,\
+    def baseswap(self, base, strong_gens, pos, randomized=True,\
                  transversals=None, basic_orbits=None, distr_gens=None):
         r"""
         Swap two consecutive base points in a base and strong generating set.
