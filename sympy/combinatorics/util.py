@@ -435,6 +435,10 @@ def _insert_point_in_base(group, base, strong_gens, pos, point, distr_gens=None,
             if [gen(point) for point in new_base[: pos + 1]] == [point for point in new_base[: pos + 1]]:
                 new_stab_gens.append(gen)
         distr_gens[pos + 1] = new_stab_gens
+    # amend the pos+1-th basic orbit and transversal
+    new_transversal = dict(PermutationGroup(distr_gens[pos+1]).orbit_transversal(base[pos + 1], pairs=True))
+    transversals[pos + 1] = new_transversal
+    basic_orbits[pos + 1] = new_transversal.keys()
     # return the new partial base and partial strong generating set
     new_base.pop()
     new_base = new_base + base[pos + 1 :]

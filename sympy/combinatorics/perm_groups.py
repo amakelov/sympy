@@ -2507,7 +2507,7 @@ class PermutationGroup(Basic):
             return base, gens
         # make sure no generator fixes all base points
         for gen in gens:
-            if [gen(x) for x in base] == [x for x in base]:
+            if gen != _new_from_array_form(range(degree)) and [gen(x) for x in base] == [x for x in base]:
                 new = 0
                 while gen(new) == new:
                     new += 1
@@ -2727,7 +2727,6 @@ class PermutationGroup(Basic):
                 f = l
                 c[l] = 0
                 # line 27
-                stab_f = PermutationGroup(res_distr_gens[f])
                 temp_orbits = stab_f.orbits()
                 reps = []
                 for orbit in orbits:
