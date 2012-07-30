@@ -2630,7 +2630,7 @@ class PermutationGroup(Basic):
         nu = [None]*base_len
         # this corresponds to the element smaller than all points
         mu[l] = degree + 1
-        temp_index = len(basic_orbits[l])+1-len(res_basic_orbits[l])
+        temp_index = len(basic_orbits[l])+1-len(res_basic_orbits_init_base[l])
         if temp_index >= len(basic_orbits[l]):
             # this corresponds to the element larger than all points
             nu[l] = base_ordering[degree]
