@@ -25,7 +25,6 @@ def cyclic(a, n):
         x = [y-1 for y in x]
         a1 += x
         v.append(x)
-    #print 'DB1 v=', v
     for i in range(n):
         if i not in a1:
             v.append([i])
