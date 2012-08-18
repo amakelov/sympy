@@ -325,13 +325,6 @@ class Permutation(Basic):
         return self.cyclic_form
 
     @property
-    def reduced_cyclic_form(self):
-        return [a for a in self.cyclic_form if len(a)>1]
-
-
-
-
-    @property
     def size(self):
         """
         Returns the number of numbers in the permutation
