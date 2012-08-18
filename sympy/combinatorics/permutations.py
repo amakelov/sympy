@@ -241,6 +241,7 @@ class Permutation(Basic):
 
     _array_form = None
     _cyclic_form = None
+    _size = None
 
     @property
     def array_form(self):
@@ -271,11 +272,9 @@ class Permutation(Basic):
         if not isinstance(self.args[0][0], list):
             self._array_form = self.args[0]
             return self._array_form
-        size = 0
+        size = self._size
         cycles = self.args[0]
-        for c in cycles:
-            size += len(c)
-        perm = [None]*size
+        perm = range(size)
         for c in cycles:
             for i in range(len(c)-1):
                 perm[c[i]] = c[i+1]
@@ -336,7 +335,11 @@ class Permutation(Basic):
         >>> Permutation([[3, 2], [0, 1]]).size
         4
         """
-        return len(self.array_form)
+        if self._size is None:
+            self._size = len(self.array_form)
+            return self._size
+        else:
+            return self._size
 
     def __new__(cls, *args, **kw_args):
         """
@@ -358,21 +361,21 @@ class Permutation(Basic):
             raise ValueError("Permutation argument must be a list of ints "
                              "or a list of lists.")
 
-        # 0, 1, ..., n-1 should all be present
-
-        temp = [int(i) for i in flatten(args[0])]
-        if set(range(len(temp))) != set(temp):
-            raise ValueError("Integers 0 through %s must be present." %
-                             len(temp))
-
-        cform = aform = None
+        cform = aform = size = None
         if args[0] and is_sequence(args[0][0]):
-            cform = [list(a) for a in args[0]]
+            max_moved = 0
+            cform = []
+            for cycle in args[0]:
+                cform.append(list(cycle))
+                if max(cycle) > max_moved:
+                    max_moved = max(cycle)
+            size = max_moved + 1
         else:
             aform = list(args[0])
 
         ret_obj = Basic.__new__(cls, (cform or aform), **kw_args)
         ret_obj._cyclic_form, ret_obj._array_form = cform, aform
+        ret_obj._size = size
         return ret_obj
 
 
@@ -470,10 +473,14 @@ class Permutation(Basic):
         """
         a = self.array_form
         b = other.array_form
-        if len(a) != len(b):
-            raise ValueError("The number of elements in the permutations "
-                             "do not match.")
-
+        la = len(a)
+        lb = len(b)
+        if la > lb:
+            b = b + range(lb, la)
+            other._size = la
+        elif lb > la:
+            a = a + range(la, lb)
+            self._size = lb
         perm = [a[i] for i in b]
         return _new_from_array_form(perm)
 
